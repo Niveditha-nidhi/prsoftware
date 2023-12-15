@@ -1,189 +1,125 @@
-import javafx.application.Application;
-import javafx.beans.property.*;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.BorderPane;
-import javafx.stage.Stage;
+import java.util.ArrayList;
+import java.util.Scanner;
 
-public class InventoryManagementSystem extends Application {
+class Product {
+    private String name;
+    private double price;
+    private int quantity;
+    private static final int RESTOCK_THRESHOLD = 10;
 
-    private ObservableList<Product> products = FXCollections.observableArrayList();
+    public Product(String name, double price, int quantity) {
+        this.name = name;
+        this.price = price;
+        this.quantity = quantity;
+    }
 
+    public String getName() {
+        return name;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void updateQuantity(int quantity) {
+        this.quantity += quantity;
+    }
+
+    public boolean isLowInStock() {
+        return quantity <= RESTOCK_THRESHOLD;
+    }
+}
+
+class Inventory {
+    private ArrayList<Product> products = new ArrayList<>();
+
+    public void addProduct(Product product) {
+        products.add(product);
+    }
+
+    public void updateProduct(String productName, int quantitySold) {
+        for (Product product : products) {
+            if (product.getName().equals(productName)) {
+                if (product.getQuantity() >= quantitySold) {
+                    product.updateQuantity(-quantitySold);
+                    System.out.println("Sale recorded successfully.");
+
+                    if (product.isLowInStock()) {
+                        System.out.println("Low in stock! Consider restocking " + product.getName() + ".");
+                    }
+                } else {
+                    System.out.println("Insufficient stock for the sale.");
+                }
+                return;
+            }
+        }
+        System.out.println("Product not found.");
+    }
+
+    public void generateReport() {
+        System.out.println("\nInventory Report:");
+        for (Product product : products) {
+            System.out.println("Product: " + product.getName() +
+                    ", Price: $" + product.getPrice() +
+                    ", Quantity: " + product.getQuantity());
+        }
+    }
+}
+
+public class InventoryManagementSystem {
     public static void main(String[] args) {
-        launch(args);
-    }
+        Scanner scanner = new Scanner(System.in);
+        Inventory inventory = new Inventory();
 
-    @Override
-    public void start(Stage primaryStage) {
-        primaryStage.setTitle("Inventory Management System");
+        while (true) {
+            System.out.println("\nInventory Management System Menu:");
+            System.out.println("1. Add Product");
+            System.out.println("2. Record Sale");
+            System.out.println("3. Generate Report");
+            System.out.println("4. Exit");
 
-        TableView<Product> table = createProductTable();
-        BorderPane borderPane = createBorderPane(table);
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume the newline character
 
-        Scene scene = new Scene(borderPane, 800, 600);
-        primaryStage.setScene(scene);
+            switch (choice) {
+                case 1:
+                    System.out.print("Enter Product Name: ");
+                    String name = scanner.nextLine();
+                    System.out.print("Enter Product Price: $");
+                    double price = scanner.nextDouble();
+                    System.out.print("Enter Initial Quantity: ");
+                    int quantity = scanner.nextInt();
 
-        primaryStage.show();
-    }
+                    Product newProduct = new Product(name, price, quantity);
+                    inventory.addProduct(newProduct);
+                    System.out.println("Product added successfully.");
+                    break;
 
-    private BorderPane createBorderPane(TableView<Product> table) {
-        BorderPane borderPane = new BorderPane();
+                case 2:
+                    System.out.print("Enter Product Name for Sale: ");
+                    String productName = scanner.nextLine();
+                    System.out.print("Enter Quantity Sold: ");
+                    int quantitySold = scanner.nextInt();
 
-        Button addButton = new Button("Add Product");
-        addButton.setOnAction(e -> showAddProductDialog());
+                    inventory.updateProduct(productName, quantitySold);
+                    break;
 
-        Button sellButton = new Button("Sell Product");
-        sellButton.setOnAction(e -> showSellProductDialog(table));
+                case 3:
+                    inventory.generateReport();
+                    break;
 
-        borderPane.setTop(createMenuBar());
-        borderPane.setCenter(table);
+                case 4:
+                    System.out.println("Exiting Inventory Management System. Goodbye!");
+                    System.exit(0);
+                    break;
 
-        borderPane.setLeft(addButton);
-        borderPane.setBottom(sellButton);
-
-        return borderPane;
-    }
-
-    private MenuBar createMenuBar() {
-        MenuBar menuBar = new MenuBar();
-        Menu fileMenu = new Menu("File");
-        MenuItem exitMenuItem = new MenuItem("Exit");
-        exitMenuItem.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().add(exitMenuItem);
-        menuBar.getMenus().add(fileMenu);
-
-        return menuBar;
-    }
-
-    private TableView<Product> createProductTable() {
-        TableView<Product> table = new TableView<>();
-        table.setItems(products);
-
-        TableColumn<Product, String> nameColumn = new TableColumn<>("Product Name");
-        nameColumn.setCellValueFactory(new PropertyValueFactory<>("name"));
-
-        TableColumn<Product, Integer> quantityColumn = new TableColumn<>("Quantity");
-        quantityColumn.setCellValueFactory(new PropertyValueFactory<>("quantity"));
-
-        TableColumn<Product, Double> priceColumn = new TableColumn<>("Price");
-        priceColumn.setCellValueFactory(new PropertyValueFactory<>("price"));
-
-        table.getColumns().addAll(nameColumn, quantityColumn, priceColumn);
-
-        return table;
-    }
-
-    private void showAddProductDialog() {
-        Dialog<Product> dialog = new Dialog<>();
-        dialog.setTitle("Add Product");
-        dialog.setHeaderText("Enter Product Details");
-
-        ButtonType addButton = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(addButton, ButtonType.CANCEL);
-
-        TextField nameField = new TextField();
-        TextField quantityField = new TextField();
-        TextField priceField = new TextField();
-
-        dialog.getDialogPane().setContent(new VBox(10, new Label("Name:"), nameField, new Label("Quantity:"), quantityField, new Label("Price:"), priceField));
-
-        dialog.setResultConverter(buttonType -> {
-            if (buttonType == addButton) {
-                try {
-                    String name = nameField.getText();
-                    int quantity = Integer.parseInt(quantityField.getText());
-                    double price = Double.parseDouble(priceField.getText());
-                    return new Product(name, quantity, price);
-                } catch (NumberFormatException e) {
-                    showAlert("Invalid input. Please enter valid numbers.");
-                    return null;
-                }
+                default:
+                    System.out.println("Invalid choice. Please enter a number between 1 and 4.");
             }
-            return null;
-        });
-
-        dialog.showAndWait().ifPresent(product -> {
-            if (product != null) {
-                products.add(product);
-            }
-        });
-    }
-
-    private void showSellProductDialog(TableView<Product> table) {
-        Product selectedProduct = table.getSelectionModel().getSelectedItem();
-
-        if (selectedProduct == null) {
-            showAlert("Please select a product to sell.");
-            return;
-        }
-
-        TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("Sell Product");
-        dialog.setHeaderText("Enter quantity to sell:");
-        dialog.setContentText("Quantity:");
-
-        dialog.showAndWait().ifPresent(quantityString -> {
-            try {
-                int quantityToSell = Integer.parseInt(quantityString);
-
-                if (quantityToSell > selectedProduct.getQuantity()) {
-                    showAlert("Not enough stock available.");
-                    return;
-                }
-
-                selectedProduct.setQuantity(selectedProduct.getQuantity() - quantityToSell);
-                showAlert("Sold " + quantityToSell + " units of " + selectedProduct.getName());
-            } catch (NumberFormatException e) {
-                showAlert("Invalid input. Please enter a valid number.");
-            }
-        });
-    }
-
-    private void showAlert(String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Information");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
-    }
-
-    public static class Product {
-        private final StringProperty name;
-        private final IntegerProperty quantity;
-        private final DoubleProperty price;
-
-        public Product(String name, int quantity, double price) {
-            this.name = new SimpleStringProperty(name);
-            this.quantity = new SimpleIntegerProperty(quantity);
-            this.price = new SimpleDoubleProperty(price);
-        }
-
-        public String getName() {
-            return name.get();
-        }
-
-        public void setName(String name) {
-            this.name.set(name);
-        }
-
-        public int getQuantity() {
-            return quantity.get();
-        }
-
-        public void setQuantity(int quantity) {
-            this.quantity.set(quantity);
-        }
-
-        public double getPrice() {
-            return price.get();
-        }
-
-        public void setPrice(double price) {
-            this.price.set(price);
         }
     }
 }
